@@ -1,0 +1,24 @@
+{
+  "name": "ft-mockit",
+  "version": "0.0.1",
+  "description": "Generic service mocking library",
+  "main": "index.js",
+  "scripts": {
+    "test": "istanbul cover node_modules/.bin/_mocha -- test/**/*"
+  },
+  "keywords": [
+    "mocking"
+  ],
+  "author": "Johnny Mileham",
+  "license": "ISC",
+  "dependencies": {
+    "sinon": "^1.17.7",
+    "traverse": "^0.6.6"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "istanbul": "^0.4.5",
+    "lodash": "^4.17.4",
+    "mocha": "^3.2.0"
+  }
+}
