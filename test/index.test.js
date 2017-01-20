@@ -51,28 +51,33 @@ describe ('Mock a service', function(){
         mockit.mock('os', 'freemem', () => '12345');
         expect(mockit.mocksForService('os')).to.deep.equal(['arch', 'freemem']);
         expect(os.arch()).to.equal('x128');
-
         
         mockit.restoreAll();
         expect(mockit.serviceList()).to.be.empty;
         expect(os.arch()).to.equal(process.arch);
     });
-    // it('Mock out a synchronous method with no args', function(){
-    //     mockit.mock('os', 'arch', () => {
-    //         return "x128";
-    //     });
-    //     expect(os.arch()).to.equal('x128');
-    //     expect(mockit.serviceList()).to.deep.equal(['os']);
-    //     expect(os.type().toLowerCase()).to.equal(process.platform); // Confirm no other methods affected
-    // });
-    // it('Mock out a synchronous method with args', function(){
-    //     mockit.mock('os', 'arch', (muliplyer) => {
-    //         return `x${2 * muliplyer}`;
-    //     });
-    //     expect(os.arch(16)).to.equal('x32');
-    //     expect(mockit.serviceList()).to.deep.equal(['os']);
-    //     expect(os.type().toLowerCase()).to.equal(process.platform); // Confirm no other methods affected
-    // });
+    it ('Mock the same method twice', function(){
+        mockit.mock('os', 'arch', () => "x128");
+        mockit.mock('os', 'arch', () => "x256");
+        expect(os.arch()).to.equal('x256');
+    });
+    it ('Returns undefined if method cannot be mocked (not real method)', function(){
+        try{
+            mockit.mock('os','badMethod', () => 'value');
+        } catch (exp){
+            expect(exp instanceof TypeError).to.be.true;
+        }
+    });
+    it('Mock out a synchronous method with no args', function(){
+        mockit.mock('os', 'arch', () => "x128");
+        expect(os.arch()).to.equal('x128');
+        expect(mockit.serviceList()).to.deep.equal(['os']);
+    });
+    it('Mock out a synchronous method with args', function(){
+        mockit.mock('os', 'arch', (muliplyer) => `x${2 * muliplyer}`);
+        expect(os.arch(16)).to.equal('x32');
+        expect(mockit.serviceList()).to.deep.equal(['os']);
+    });
     // it('Mock out an asynchronus method', function(done){
     //     mockit.mock('http','get',(params, callback) => {
     //         callback("Worked");

@@ -53,25 +53,34 @@ function restoreAll(){
 }
 // Private functions
 // TODO finish this for callbacks
+/**
+ * 
+ */
 function mockMethod(service, method, replace) {
-    if(services[service].methodMocks[method]){console.log('Method already mocked'); return;}
+    // If a method is already mocked, the old mock will removed
+    if(services[service].methodMocks[method]){
+        restoreMethod(service, method);
+    }
+    // Create mock of method. If method cannot be mocked, error is thrown
     const methodStub = sinon.stub(services[service].actual, method, function() {
         const args = Array.prototype.slice.call(arguments);
-        if(!args.length) return replace();
-
-        let userArgs, userCallback;
-        
-        if (typeof(args[args.length - 1]) === 'function') {
-            userArgs = args.slice(0, -1);
-            userCallback = args[(args.length) - 1];
-        } else {
-            userArgs = args;
+        // If there are no arguments for the mock, just call the replacement method
+        if(!args.length) {
+            return replace();
+        }else{
+            let userArgs, userCallback;        
+            if (typeof(args[args.length - 1]) === 'function') {
+                userArgs = args.slice(0, -1);
+                userCallback = args[(args.length) - 1];
+            } else {
+                userArgs = args;
+            }
+            //console.log('userArgs', userArgs);
+            //console.log('userCallback', userCallback);
+            return replace(userArgs, userCallback);
         }
-        console.log('userArgs', userArgs);
-        console.log('userCallback', userCallback);
-        return replace(userArgs, userCallback);
     });
-    services[service].methodMocks[method] = methodStub;
+    services[service].methodMocks[method] = methodStub;   
 };
 
 // Exporting object as singleton
