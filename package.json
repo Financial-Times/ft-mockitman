@@ -1,10 +1,14 @@
 {
   "name": "ft-mockitman",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Generic service mocking library",
   "main": "index.js",
   "scripts": {
     "test": "istanbul cover node_modules/.bin/_mocha -- test/**/*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Financial-Times/ft-mockitman.git"
   },
   "keywords": [
     "mocking"
@@ -12,8 +16,7 @@
   "author": "Johnny Mileham",
   "license": "ISC",
   "dependencies": {
-    "sinon": "^1.17.7",
-    "traverse": "^0.6.6"
+    "sinon": "^1.17.7"
   },
   "devDependencies": {
     "chai": "^3.5.0",
