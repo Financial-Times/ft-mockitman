@@ -174,7 +174,7 @@ function _setupService(service, method, replace){
     const _rootService = _servicePath.shift();
     const _module = require(_rootService);
     const _serviceType = typeof traverse(_module).get(_servicePath);
-
+    const _moduleType = typeof _module;
     if(_serviceType !== 'function' && _serviceType !== 'object'){
         throw new TypeError(`The service '${service}' is not mockable`);
     }
@@ -183,10 +183,11 @@ function _setupService(service, method, replace){
     services[service].methodMocks = {};
     _registerMethod(service, method, replace);
     if(_serviceType === 'function'){
+        const toStub = (_moduleType === 'function')? 'constructor' : _btmService;
         services[service].instance = {};
         services[service].instance.clients = [];
         services[service].instance.class = traverse(_module).get(_servicePath);
-        services[service].stub = sinon.stub(_module, _btmService, function(args){
+        services[service].stub = sinon.stub(_module, toStub, function(args){
             // THIS FUNCTION HERE IS ONLY CALLED WHEN INSTNATIATED
             const client = new services[service].instance.class(args);
             services[service].instance.clients.push(client);
