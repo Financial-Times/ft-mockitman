@@ -6,6 +6,10 @@ A generic mocking library for nodejs that is a wrapper of sinon
  * Restore mocked methods
  * Handle synchronous methods
  * Handle asynchronous methods
+ * Mock instance objects
+ * Mock singleton objects
+ * Remocking a function replaces the mock
+ * Restoring a function restores the function for all instance objects of a service
 
 ## Requirements
 * Node.js 4.3 or higher
@@ -18,7 +22,7 @@ General Usage in your test case
 const mockitman = require('mockitman'); // This is a singleton object
 ```
 
-Mock a synchronous function
+Mock a synchronous function ( singleton object/service )
 ```javascript
 // service, function, replacement function 
 mockitman.mock('os', 'arch', function(){return 'x128'});
@@ -27,6 +31,18 @@ console.log(os.arch()); // => x128
 // Restore original function
 mockitman.restoreMethod('os', 'arch');
 console.log(os.arch()); // => x64
+```
+
+Mock a synchronous function ( instance object/service )
+```javascript
+// service, function, replacement function 
+mockitman.mock('buffer.Buffer','toString', () => {return 'js6'});
+const buff = new Buffer('abc');
+console.log(buff.toString()); // => js6
+
+// Restore original function
+mockitman.restoreMethod('buffer.Buffer', 'toString');
+console.log(buff.toString()); // => abc
 ```
 
 Mock an asynchronous function
@@ -64,12 +80,13 @@ mockitman.restoreMethod('http', 'get');
 * Unmocks a function for a service
 * @param {String} service - The service
 * @param {String} function - The function to restore
-* @returns {undefined} - If method or service cannot be found
+* @returns {Boolean} - If function restored
+* @throws {Error} - If service or function cannot be found
 
 ### restoreService ( service )
 * Unmocks all functions for a service
-* @param {String} service - The service to restore
-* @returns {undefined} - If the service is not registered
+* @returns {Boolean} - True if the service is  registered
+* @throws {Error} - If service cannot be found
 
 ### restoreAll ()
  * Unmocks everything registered/mocked

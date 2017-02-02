@@ -5,14 +5,15 @@
  * - Restore mocked methods
  * - Handle synchronous methods
  * - Asynchronous methods
+ * - Mock singleton objects
+ * - Mock instance objects
  */
-
 const sinon = require('sinon');
-
+const traverse = require('traverse');
 const services = {};
-
+    // TODO For future?? -  handle > 2 nested objects
+    // TODO For future?? - handle nested singleton objects
 // Public functions
-
 /**
  * Mocks a method of a service with a replacement
  * @param {String} service - The name of the service to mock (module name)
@@ -21,11 +22,10 @@ const services = {};
  */
 function mock(service, method, replace){
     if(!services[service]){
-        services[service] = {};
-        services[service].actual = require(service);
-        services[service].methodMocks = {};
+        _setupService(service, method, replace)
+    }else{
+        _mockMethodForService(service, method, replace);
     }
-        mockMethod(service, method, replace);
 }
 /**
  * Gets a list of mocked services
@@ -47,27 +47,45 @@ function mocksForService(service){
  * Unmocks a method for a service
  * @param {String} service - The service
  * @param {String} method - The method to restore
- * @returns {undefined} - If method or service cannot be found
+ * @returns {Boolean} - If method restored
+ * @throws {Error} - If service or method cannot be found
  */
 function restoreMethod(service, method){
-    if(!services[service].methodMocks[method]) return undefined;
-    services[service].methodMocks[method].restore();
+    if(!services[service]) throw new Error(`Service '${service}' is not mocked`);
+    if(!traverse(services[service].methodMocks).has([method])) throw new Error(`Method '${method}' for service '${service}' is not mocked`);
+    for(let s in services[service].methodMocks[method].stubs ){
+        services[service].methodMocks[method].stubs[s].restore();
+    }
+    services[service].methodMocks[method].stubs = [];
+    delete services[service].methodMocks[method].replacement;
+    delete services[service].methodMocks[method].stub;
     delete services[service].methodMocks[method];
+    return true;
 }
 /**
  * Unmocks all methods for a service
  * @param {String} service - The service to restore
- * @returns {undefined} - If the service is not registered
+ * @returns {Boolean} - True if the service is  registered
+ * @throws {Error} - If service cannot be found
  */
 function restoreService(service){
-    if(!services[service]) return undefined;
+    if(!services[service]) throw new Error(`Service '${service}' is not mocked`);
     const methodMocks = services[service].methodMocks;
     for(let mocked in methodMocks){
         restoreMethod(service, mocked);
     }
+    if(services[service].instance){
+        services[service].stub.restore();
+        services[service].instance.clients = [];
+        delete services[service].instance.clients;
+        delete services[service].instance.class;
+        delete services[service].instance;
+        delete services[service].stub;
+    }
     delete services[service].methodMocks;
-    delete services[service].actual;
+    delete services[service].module;
     delete services[service];
+    return true;
 }
 /**
  * Unmocks everything registered/mocked
@@ -78,22 +96,33 @@ function restoreAll(){
     }
 }
 // Private functions
-
 /**
- * Mocks a method for a service (replaces it with supplied)
- * @param {String} service - The service to mock methods for
+ * Registers a method for mocking. If the method is already mocked, 
+ * it is restored and reregistered
+ * @param {String} service - The object to mock methods for (singleton or instance)
  * @param {String} method - The method to mock
  * @param {Function} replace - The replacement (mock) method
  */
-function mockMethod(service, method, replace) {
-    // If a method is already mocked, the old mock will removed
-    if(services[service].methodMocks[method]){
+function _registerMethod(service, method, replace){
+    // If a method is already mocked, remove it and replace
+    if(!mocksForService(service).indexOf(method)){
         restoreMethod(service, method);
     }
-    // Create mock of method. If method cannot be mocked, error is thrown
-    const methodStub = sinon.stub(services[service].actual, method, function() {
+    services[service].methodMocks[method] = {};
+    services[service].methodMocks[method].stubs = [];
+    services[service].methodMocks[method].replacement = replace;
+}
+/**
+ * Mocks a method for a service (replaces it with supplied)
+ * @param {Object} client - The object to mock methods for (singleton or instance)
+ * @param {String} method - The method to mock
+ * @param {Function} replace - The replacement (mock) method
+ * @returns {Object} - The method stub
+ */
+function _mockMethod(client, method, replace){
+    const methodStub = sinon.stub(client, method, function() {
+        // THIS FUNCTION HERE IS ONLY CALLED WHEN METHOD CALLED
         const args = Array.prototype.slice.call(arguments);
-        // If there are no arguments for the mock, just call the replacement method
         if(!args.length) {
             return replace();
         }else{
@@ -112,8 +141,68 @@ function mockMethod(service, method, replace) {
             }
         }
     });
-    services[service].methodMocks[method] = methodStub;   
+    return methodStub;
+}
+/**
+ * Mocks a method for mocked services (singleton or instances)
+ * @param {String} service - The service to mock the method for
+ * @param {String} method - The method to mock
+ * @param {Function} replace - The replacement (mock) method
+ */
+function _mockMethodForService(service, method, replace) {
+    _registerMethod(service, method, replace);
+    if(services[service].instance){
+        for(let c of services[service].instance.clients){
+            if(!traverse(c).has([method])){
+                services[service].methodMocks[method].stubs.push(_mockMethod(c,method,replace));
+            }
+        }
+    }else{
+        services[service].methodMocks[method].stubs.push(_mockMethod(services[service].module,method,replace));
+    }       
 };
+/**
+ * Sets up a service (singleton or instance) for mocks. It mocks out instance
+ * and then does method mocking for methods registered
+ * @param {String} service - The service to mock the method for
+ * @param {String} method - The method to mock
+ * @param {Function} replace - The replacement (mock) method
+ */
+function _setupService(service, method, replace){
+    const _servicePath = service.split('.');
+    const _btmService = _servicePath[_servicePath.length -1];
+    const _rootService = _servicePath.shift();
+    const _module = require(_rootService);
+    const _serviceType = typeof traverse(_module).get(_servicePath);
+
+    if(_serviceType !== 'function' && _serviceType !== 'object'){
+        throw new TypeError(`The service '${service}' is not mockable`);
+    }
+    services[service] = {};
+    services[service].module = _module;
+    services[service].methodMocks = {};
+    _registerMethod(service, method, replace);
+    if(_serviceType === 'function'){
+        services[service].instance = {};
+        services[service].instance.clients = [];
+        services[service].instance.class = traverse(_module).get(_servicePath);
+        services[service].stub = sinon.stub(_module, _btmService, function(args){
+            // THIS FUNCTION HERE IS ONLY CALLED WHEN INSTNATIATED
+            const client = new services[service].instance.class(args);
+            services[service].instance.clients.push(client);
+            for(let m in services[service].methodMocks){
+                const methodStub = _mockMethod(client, m, services[service].methodMocks[m].replacement); // Now service is mocked, mock method
+                services[service].methodMocks[m].stubs.push(methodStub)
+            }
+            return client;
+        });
+    }else{
+        for(let m in services[service].methodMocks){
+            const methodStub = _mockMethod(_module, m, services[service].methodMocks[m].replacement); // Now mock not required, mock method
+            services[service].methodMocks[m].stubs.push(methodStub);
+        }
+    }
+}
 
 // Exporting object as singleton
 module.exports = {
