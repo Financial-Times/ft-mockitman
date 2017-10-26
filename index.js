@@ -120,7 +120,7 @@ function _registerMethod(service, method, replace){
  * @returns {Object} - The method stub
  */
 function _mockMethod(client, method, replace){
-    const methodStub = sinon.stub(client, method, function() {
+    const methodStub = sinon.stub(client, method).callsFake(function() {
         // THIS FUNCTION HERE IS ONLY CALLED WHEN METHOD CALLED
         const args = Array.prototype.slice.call(arguments);
         if(!args.length) {
@@ -187,8 +187,8 @@ function _setupService(service, method, replace){
         services[service].instance = {};
         services[service].instance.clients = [];
         services[service].instance.class = traverse(_module).get(_servicePath);
-        services[service].stub = sinon.stub(_module, toStub, function(args){
-            // THIS FUNCTION HERE IS ONLY CALLED WHEN INSTNATIATED
+        services[service].stub = sinon.stub(_module, toStub).callsFake(function(args){
+            // THIS FUNCTION HERE IS ONLY CALLED WHEN INSTANTIATED
             const client = new services[service].instance.class(args);
             services[service].instance.clients.push(client);
             for(let m in services[service].methodMocks){

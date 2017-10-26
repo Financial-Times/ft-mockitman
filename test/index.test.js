@@ -144,7 +144,7 @@ describe ('Mock a service', function(){
         expect(os.arch()).to.equal('x128');
 
         mockitman.restoreService('os');
-        expect(mockitman.mocksForService('os')).to.be.empty;
+        expect(mockitman.mocksForService('os')).to.be.undefined;
         expect(os.arch()).to.equal(process.arch);
     });
     it ('Tries to restore a non-registered service ', function(){
